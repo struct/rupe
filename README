@@ -1,0 +1,8 @@
+ruPE is a Ruby class for parsing PE (Portable Executable) file format.
+
+It requires http://github.com/tqbf/ruckus
+
+TODO:
+
+	- Parse Imports/Exports
+	- Generic stuff like extending the Ruckus classes that define image sections
