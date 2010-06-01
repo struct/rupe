@@ -55,10 +55,11 @@ class RUPE
 		@coff.capture f[@dos_hdr.pe_offset.to_i + @pe_sig.size, @coff.size.to_i]
 	end
 
-	def parse_opt_header
+    def parse_opt_header
 		@peo = PEOptionalHeader.new
 		f = get_file
-		@peo.capture f[@dos_hdr.pe_offset.to_i + @pe_sig.size + @coff.size.to_i, @peo.size.to_i]
+        d = DataDirectory.new
+		@peo.capture f[@dos_hdr.pe_offset.to_i + @pe_sig.size + @coff.size.to_i, @peo.size.to_i + (d.size * 16)]
 		@data_dirs = @peo.dirs
 	end
 
@@ -72,8 +73,19 @@ class RUPE
 	end
 
 	def parse_imports
-		
+        d = @data_dirs[DataDirectoryTypes::IMPORT]
+        i = ImageImportDescriptor.new
+        0.upto(d.siz / i.size) do |c|
+            f = get_file
+            i = ImageImportDescriptor.new
+            i.capture f[d.virtual_address + (c * i.size), i.size]
+            puts i.to_human
+        end
 	end
+
+    def parse_exports
+        
+    end
 
 	class PESig < Ruckus::Structure
 		str	:pe_sig, :size => 4
@@ -228,8 +240,8 @@ class RUPE
 	  ]
 
 	SECTION_FLAGS = [
-		IMAGE_SCN_TYPE_NO_PAD =               0x00000008, # Reserved.
-		IMAGE_SCN_CNT_CODE     =              0x00000020, # Section contains code.
+		IMAGE_SCN_TYPE_NO_PAD          =      0x00000008, # Reserved.
+		IMAGE_SCN_CNT_CODE             =      0x00000020, # Section contains code.
 		IMAGE_SCN_CNT_INITIALIZED_DATA =      0x00000040, # Section contains initialized data.
 		IMAGE_SCN_CNT_UNINITIALIZED_DATA =    0x00000080, # Section contains uninitialized data.
 		IMAGE_SCN_LNK_OTHER            =      0x00000100, # Reserved.
@@ -267,6 +279,25 @@ class RUPE
 		IMAGE_SCN_MEM_READ             =      0x40000000, # Section is readable.
 		IMAGE_SCN_MEM_WRITE            =      0x80000000  # Section is writeable.
 	]
+
+    class DataDirectoryTypes
+        EXPORT = 0
+        IMPORT = 1
+        RESOURCE = 2
+        EXCEPTION = 3
+        CERTIFICATE_FILE = 4
+        RELOCATION_TABLE = 5
+        DEBUG_DATA = 6
+        ARCH_DATA = 7
+        GLOBAL_PTR = 8
+        TLS_TABLE = 9
+        LOAD_CONFIG_TABLE = 10
+        BOUND_IMPORT_TABLE = 11
+        IMPORT_ADDRESS_TABLE = 12
+        DELAY_IMPORT_DESC = 13
+        COM_RUNTIME_HDR = 14
+        RESERVED = 15
+    end
 end
 
 if $0 == __FILE__
@@ -287,5 +318,7 @@ if $0 == __FILE__
 
 	puts "\n; SECTION HEADERS ----------------------------------------\n\n"
 	p.pe_shdrs.each do |x| puts x.to_human end
+
+    p.parse_imports
 	
 end
